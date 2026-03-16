@@ -1,12 +1,11 @@
--- [[ ★ THỐNG HUB V24 - FIX ALL BUGS ★ ]] --
+-- [[ ★ THỐNG HUB V24 - FIX CƠ CHẾ HIỂN THỊ ★ ]] --
 repeat task.wait() until game:IsLoaded()
 
 local Player = game.Players.LocalPlayer
-local char = Player.Character or Player.CharacterAdded:Wait()
-local hrp = char:WaitForChild("HumanoidRootPart")
+local VIM = game:GetService("VirtualInputManager")
 local pGui = Player:WaitForChild("PlayerGui")
 
--- Xóa UI cũ
+-- Xóa UI cũ để tránh xung đột
 for _, old in pairs(pGui:GetChildren()) do
     if old.Name:find("ThốngHub") or old.Name == "ThongToggleUI" then old:Destroy() end
 end
@@ -14,90 +13,111 @@ end
 -- --- BIẾN HỆ THỐNG ---
 _G.AutoFarm = false
 _G.AutoSell = false
-_G.Combo = "Z,X,C,V"
+_G.ComboOrder = "Z,X,C,V"
 _G.Delays = {Z = 0.5, X = 0.5, C = 0.5, V = 0.5}
-_G.FishingCF = nil
-_G.SellCF = nil
 
--- --- HÀM CÂU CÁ & SKILL (FIX LỖI KHÔNG HOẠT ĐỘNG) ---
-local function FireSkill(key)
-    -- Sử dụng Remote của game để tung chiêu (Không cần nhấp màn hình)
-    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes") 
-    if remote then
-        -- Gửi lệnh tung chiêu dựa trên phím Thống chọn
-        remote.SkillEvent:FireServer(key:upper()) 
-    else
-        -- Nếu không tìm thấy Remote, dùng VirtualInputManager làm dự phòng
-        local VIM = game:GetService("VirtualInputManager")
-        VIM:SendKeyEvent(true, Enum.KeyCode[key:upper()], false, game)
-        task.wait(0.05)
-        VIM:SendKeyEvent(false, Enum.KeyCode[key:upper()], false, game)
-    end
-end
+-- --- KHỞI TẠO UI ---
+local Gui = Instance.new("ScreenGui")
+Gui.Name = "ThốngHubV24"
+Gui.IgnoreGuiInset = true
+Gui.Parent = pGui
 
-local function ClickCauCa()
-    -- Tự động nhấn nút Câu Cá bằng cách tìm Object trong PlayerGui
-    pcall(function()
-        local button = pGui:FindFirstChild("Câu cá", true) or pGui:FindFirstChild("Click", true)
-        if button and button:IsA("GuiButton") then
-            -- Giả lập nhấn trực tiếp vào nút
-            local x, y = button.AbsolutePosition.X + (button.AbsoluteSize.X/2), button.AbsolutePosition.Y + (button.AbsoluteSize.Y/2)
-            game:GetService("VirtualInputManager"):SendMouseButtonEvent(x, y, 0, true, game, 1)
-            task.wait(0.01)
-            game:GetService("VirtualInputManager"):SendMouseButtonEvent(x, y, 0, false, game, 1)
-        end
+-- Nút Bật/Tắt (Luôn hiện để cứu cánh)
+local ToggleUI = Instance.new("TextButton")
+ToggleUI.Name = "ThongToggleUI"
+ToggleUI.Size = UDim2.new(0, 45, 0, 45)
+ToggleUI.Position = UDim2.new(0, 10, 0.4, 0)
+ToggleUI.Text = "MENU"
+ToggleUI.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+ToggleUI.TextColor3 = Color3.new(1, 1, 1)
+Instance.new("UICorner", ToggleUI).CornerRadius = UDim.new(1, 0)
+ToggleUI.Parent = Gui
+
+local Main = Instance.new("Frame")
+Main.Name = "MainFrame"
+Main.Size = UDim2.new(0, 360, 0, 280)
+Main.Position = UDim2.new(0.5, -180, 0.5, -140)
+Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Main.BorderSizePixel = 0
+Main.Active = true
+Main.Draggable = true
+Instance.new("UICorner", Main)
+Main.Parent = Gui
+
+-- Sự kiện ẩn hiện
+ToggleUI.MouseButton1Click:Connect(function()
+    Main.Visible = not Main.Visible
+end)
+
+-- Tạo các Tab đơn giản (Để tránh lỗi Mobile)
+local Container = Instance.new("ScrollingFrame")
+Container.Size = UDim2.new(1, -20, 1, -20)
+Container.Position = UDim2.new(0, 10, 0, 10)
+Container.BackgroundTransparency = 1
+Container.CanvasSize = UDim2.new(0, 0, 2, 0)
+Container.ScrollBarThickness = 2
+Container.Parent = Main
+local List = Instance.new("UIListLayout", Container)
+List.Padding = UDim.new(0, 5)
+
+-- --- HÀM TẠO NÚT BẤM (CÓ THỜI GIAN CHỜ ĐỂ FIX LỖI) ---
+local function AddToggle(txt, callback)
+    task.wait(0.1) -- Đợi một chút để tránh kẹt UI
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(1, 0, 0, 35)
+    b.Text = txt .. ": OFF"
+    b.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    b.TextColor3 = Color3.new(1, 1, 1)
+    Instance.new("UICorner", b)
+    b.Parent = Container
+    
+    local s = false
+    b.MouseButton1Click:Connect(function()
+        s = not s
+        b.Text = txt .. (s and ": ON" or ": OFF")
+        b.BackgroundColor3 = s and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(30, 30, 30)
+        callback(s)
     end)
 end
 
--- --- GIAO DIỆN (3 MỤC NHƯ THỐNG YÊU CẦU) ---
-local Gui = Instance.new("ScreenGui", pGui); Gui.Name = "ThốngHubV24"
-local Main = Instance.new("Frame", Gui); Main.Size = UDim2.new(0, 400, 0, 320); Main.Position = UDim2.new(0.5, -200, 0.4, -160)
-Main.BackgroundColor3 = Color3.fromRGB(15, 15, 20); Instance.new("UICorner", Main)
+-- --- ĐỔ CHỨC NĂNG VÀO MENU ---
+AddToggle("AUTO FARM", function(v) _G.AutoFarm = v end)
+AddToggle("AUTO SELL", function(v) _G.AutoSell = v end)
 
--- Nút Tắt/Mở UI (Nút T màu xanh trong hình của bạn)
-local T_Btn = Instance.new("TextButton", Gui); T_Btn.Size = UDim2.new(0, 40, 0, 40); T_Btn.Position = UDim2.new(0, 10, 0.5, 0)
-T_Btn.Text = "T"; T_Btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255); T_Btn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", T_Btn).CornerRadius = UDim.new(1, 0)
-T_Btn.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible end)
+-- Nút lưu vị trí (Fix lỗi tọa độ)
+local function AddBtn(txt, callback)
+    task.wait(0.1)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(1, 0, 0, 35)
+    b.Text = txt
+    b.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+    b.TextColor3 = Color3.new(1, 1, 1)
+    Instance.new("UICorner", b)
+    b.Parent = Container
+    b.MouseButton1Click:Connect(callback)
+end
 
--- [Hàm tạo Tab và chức năng mình sẽ rút gọn để bạn dễ dán]
--- (Thống hãy lưu ý: Khi chọn Skill, hãy nhập Z,X,C,V vào ô nhập liệu)
+AddBtn("LƯU VỊ TRÍ CÂU", function() _G.FishingPos = Player.Character.HumanoidRootPart.CFrame end)
+AddBtn("LƯU VỊ TRÍ BÁN", function() _G.SellPos = Player.Character.HumanoidRootPart.CFrame end)
 
--- --- LUỒNG CHÍNH (VẬN HÀNH) ---
+-- --- CORE LOGIC ---
 task.spawn(function()
     while true do
         if _G.AutoFarm then
-            ClickCauCa() -- Tự tìm nút câu cá để nhấn
-            
-            local order = string.split(_G.Combo, ",")
-            for _, k in ipairs(order) do
-                if not _G.AutoFarm then break end
-                local key = string.upper(string.gsub(k, " ", ""))
-                FireSkill(key) -- Tung chiêu bằng Remote
-                task.wait(_G.Delays[key] or 0.5)
+            -- Click bằng tọa độ tuyệt đối để tránh lỗi tâm màn hình
+            VIM:SendMouseButtonEvent(500, 500, 0, true, game, 1)
+            task.wait(0.01)
+            VIM:SendMouseButtonEvent(500, 500, 0, false, game, 1)
+            -- Tự động bấm Z,X,C,V
+            for _, k in pairs({"Z","X","C","V"}) do
+                VIM:SendKeyEvent(true, Enum.KeyCode[k], false, game)
+                task.wait(0.05)
+                VIM:SendKeyEvent(false, Enum.KeyCode[k], false, game)
+                task.wait(0.5)
             end
         end
         task.wait(0.1)
     end
 end)
 
--- --- TỰ DI CHUYỂN & HƯỚNG NHÌN (FIXED) ---
-task.spawn(function()
-    while true do
-        task.wait(1)
-        if _G.AutoSell and _G.SellCF and _G.FishingCF then
-            -- Giả lập đi bán mỗi 3 phút
-            task.wait(180)
-            local wasF = _G.AutoFarm; _G.AutoFarm = false
-            
-            -- Chạy đi bán
-            Player.Character.Humanoid:MoveTo(_G.SellCF.Position)
-            Player.Character.Humanoid.MoveToFinished:Wait()
-            task.wait(3) -- Đợi NPC bán cá
-            
-            -- Quay lại chỗ cũ và KHÓA HƯỚNG NHÌN
-            Player.Character.HumanoidRootPart.CFrame = _G.FishingCF
-            _G.AutoFarm = wasF
-        end
-    end
-end)
- 
+print("Thống Hub V24 đã sẵn sàng!")
