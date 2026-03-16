@@ -122,5 +122,15 @@ task.spawn(function()
                 local key = string.upper(string.gsub(k, " ", ""))
                 pcall(function()
                     VIM:SendKeyEvent(true, Enum.KeyCode[key], false, game)
-                    task.wait(
+                    task.wait(0.05)
+                    VIM:SendKeyEvent(false, Enum.KeyCode[key], false, game)
+                end)
+                task.wait(_G.SkillDelay)
+            end
+        end
+        task.wait(0.1)
+    end
+end)
+
+print("TTF BY THONG V14 LOADED!")
  
