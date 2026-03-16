@@ -1,79 +1,70 @@
--- [[ TTF BY THONG V8 - KHFRESH MECHANICS ]] --
+-- [[ TTF BY THONG V9 - FINAL ENGINE ]] --
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Player = game.Players.LocalPlayer
 local VIM = game:GetService("VirtualInputManager")
-local VirtualUser = game:GetService("VirtualUser")
-
--- Dọn dẹp UI cũ
 local pGui = Player:WaitForChild("PlayerGui")
-if pGui:FindFirstChild("ThongHubV8") then pGui.ThongHubV8:Destroy() end
 
--- Biến hệ thống
+-- Xóa sạch bản cũ
+if pGui:FindFirstChild("ThongHubV9") then pGui.ThongHubV9:Destroy() end
+
 _G.AutoFarm = false
-_G.AutoSell = false
 _G.FishingPos = nil
 _G.SellPos = nil
 
--- --- GIAO DIỆN MỚI ---
-local Gui = Instance.new("ScreenGui", pGui); Gui.Name = "ThongHubV8"
-local Main = Instance.new("Frame", Gui)
-Main.Size = UDim2.new(0, 240, 0, 320); Main.Position = UDim2.new(0.5, -120, 0.4, -160)
-Main.BackgroundColor3 = Color3.fromRGB(20, 20, 25); Main.Active = true; Main.Draggable = true
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
+-- --- UI CHUYÊN NGHIỆP ---
+local Gui = Instance.new("ScreenGui", pGui); Gui.Name = "ThongHubV9"; Gui.IgnoreGuiInset = true
 
--- Nút Target (Kéo thả)
+-- Nút TARGET (Phải hiện ra để bạn kéo vào chữ "Câu cá")
 local Target = Instance.new("TextButton", Gui)
-Target.Size = UDim2.new(0, 50, 0, 50); Target.Position = UDim2.new(0.5, 70, 0.5, 0)
-Target.BackgroundColor3 = Color3.fromRGB(0, 255, 120); Target.Text = "TARGET"; Target.Draggable = true; Target.Active = true
-Instance.new("UICorner", Target).CornerRadius = UDim.new(1, 0)
+Target.Size = UDim2.new(0, 60, 0, 60); Target.Position = UDim2.new(0.7, 0, 0.7, 0)
+Target.BackgroundColor3 = Color3.fromRGB(0, 255, 100); Target.Text = "KÉO VÀO\nCÂU CÁ"; Target.Draggable = true
+Target.Active = true; Target.ZIndex = 100; Instance.new("UICorner", Target).CornerRadius = UDim.new(1, 0)
 
--- --- CƠ CHẾ CLICK HỌC TỪ KHFRESH ---
-local function SmartClick()
-    local x = Target.AbsolutePosition.X + (Target.AbsoluteSize.X / 2)
-    local y = Target.AbsolutePosition.Y + (Target.AbsoluteSize.Y / 2)
-    
-    -- Giả lập chạm màn hình chính xác hơn
-    VIM:SendMouseButtonEvent(x, y + 36, 0, true, game, 1)
-    task.wait(0.05)
-    VIM:SendMouseButtonEvent(x, y + 36, 0, false, game, 1)
+local Main = Instance.new("Frame", Gui)
+Main.Size = UDim2.new(0, 220, 0, 300); Main.Position = UDim2.new(0.1, 0, 0.3, 0)
+Main.BackgroundColor3 = Color3.fromRGB(20, 20, 25); Main.Draggable = true; Main.Active = true
+Instance.new("UICorner", Main)
+
+local function MakeBtn(txt, callback)
+    local b = Instance.new("TextButton", Main)
+    b.Size = UDim2.new(0.9, 0, 0, 40); b.Position = UDim2.new(0.05, 0, 0, 0) -- Sẽ tự xếp hàng bằng UIListLayout
+    b.Text = txt; b.BackgroundColor3 = Color3.fromRGB(45, 45, 55); b.TextColor3 = Color3.new(1,1,1)
+    Instance.new("UICorner", b); b.MouseButton1Click:Connect(callback); return b
 end
+local List = Instance.new("UIListLayout", Main); List.HorizontalAlignment = "Center"; List.Padding = UDim.new(0, 10)
 
--- --- CƠ CHẾ SKILL HỌC TỪ KHFRESH ---
-local function CastSkills()
-    local keys = {"Z", "X", "C", "V"}
-    for _, key in ipairs(keys) do
-        if not _G.AutoFarm then break end
-        VIM:SendKeyEvent(true, Enum.KeyCode[key], false, game)
-        task.wait(0.1) -- Nhấn giữ ngắn
-        VIM:SendKeyEvent(false, Enum.KeyCode[key], false, game)
-        task.wait(0.3) -- Nghỉ giữa các skill để tránh lỗi
+-- --- CƠ CHẾ CLICK & SKILL CẢI TIẾN ---
+local function AutoAction()
+    -- 1. Click vào nút "Câu cá" (vị trí bạn đặt tâm xanh)
+    local x = Target.AbsolutePosition.X + 30
+    local y = Target.AbsolutePosition.Y + 30
+    VIM:SendMouseButtonEvent(x, y, 0, true, game, 1)
+    task.wait(0.05)
+    VIM:SendMouseButtonEvent(x, y, 0, false, game, 1)
+    
+    -- 2. Spam Skill (Z, X, C, V) theo nhịp
+    task.wait(0.5)
+    local keys = {Enum.KeyCode.Z, Enum.KeyCode.X, Enum.KeyCode.C}
+    for _, k in ipairs(keys) do
+        VIM:SendKeyEvent(true, k, false, game)
+        task.wait(0.1)
+        VIM:SendKeyEvent(false, k, false, game)
+        task.wait(0.2)
     end
 end
 
--- --- VÒNG LẶP CHÍNH (TOI UU HOA) ---
+-- --- VÒNG LẶP ---
 task.spawn(function()
     while true do
         if _G.AutoFarm then
-            SmartClick() -- Thả cần
-            task.wait(0.5) 
-            CastSkills() -- Tung combo
+            AutoAction()
         end
-        task.wait(0.2) -- Tốc độ vòng lặp cực nhanh nhưng không gây lag
+        task.wait(0.8) -- Nghỉ một chút để tránh giật lag điện thoại
     end
 end)
 
--- --- CÁC NÚT BẤM ---
-local Container = Instance.new("ScrollingFrame", Main)
-Container.Size = UDim2.new(1, -10, 1, -50); Container.Position = UDim2.new(0, 5, 0, 45); Container.BackgroundTransparency = 1
-Instance.new("UIListLayout", Container).HorizontalAlignment = "Center"; Container.UIListLayout.Padding = UDim.new(0, 8)
-
-local function MakeBtn(txt, callback)
-    local b = Instance.new("TextButton", Container)
-    b.Size = UDim2.new(0.9, 0, 0, 35); b.Text = txt; b.BackgroundColor3 = Color3.fromRGB(40, 40, 50); b.TextColor3 = Color3.new(1,1,1)
-    Instance.new("UICorner", b); b.MouseButton1Click:Connect(callback); return b
-end
-
+-- Nút bấm
 MakeBtn("LƯU CHỖ CÂU", function() _G.FishingPos = Player.Character.HumanoidRootPart.Position end)
 MakeBtn("LƯU CHỖ BÁN", function() _G.SellPos = Player.Character.HumanoidRootPart.Position end)
 local fBtn = MakeBtn("AUTO FARM: OFF", function() 
