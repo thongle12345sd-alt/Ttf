@@ -1,113 +1,139 @@
--- [[ ★ THỐNG HUB V31 - STABLE ENGINE ★ ]] --
+-- [[ ★ THỐNG HUB V33 - TITAN MOBILE ULTIMATE ★ ]] --
+-- Tối ưu hóa tuyệt đối cho Executor Điện Thoại (Delta, Fluxus, Codex...)
+-- Không dùng UI Library nặng, Không dùng VirtualInputManager gây kẹt.
+
 repeat task.wait() until game:IsLoaded()
 
-local Player = game.Players.LocalPlayer
-local VU = game:GetService("VirtualUser")
-local pGui = Player:WaitForChild("PlayerGui")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
+local CoreGui = game:GetService("CoreGui")
 
--- Dọn dẹp UI cũ để tránh kẹt bộ nhớ
-for _, v in pairs(pGui:GetChildren()) do
-    if v.Name == "ThongHubV31" or v.Name == "ThongToggle" then v:Destroy() end
-end
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
 
--- --- BIẾN ĐIỀU KHIỂN ---
-_G.AutoFarm = false
-_G.AutoSell = false
-_G.Combo = {"Z", "X", "C", "V"}
-_G.FishingCF = nil
-_G.SellCF = nil
-
--- --- HÀM TỰ ĐỘNG BÁN (CAN THIỆP SERVER) ---
-local function DirectSell()
-    -- Thay vì bấm E, mình ép nhân vật chạm vào NPC để kích hoạt bảng
-    -- Sau đó dùng VirtualUser để click vào nút "Bán hết" dựa trên tên Object
-    pcall(function()
-        local sellMenu = pGui:FindFirstChild("SellMenu") or pGui:FindFirstChild("ShopGui")
-        if sellMenu then
-            -- Thống ơi, mình sẽ quét toàn bộ UI để tìm nút có chữ "Bán hết" hoặc "Sell All"
-            for _, btn in pairs(sellMenu:GetDescendants()) do
-                if btn:IsA("TextButton") and (btn.Text:find("Bán hết") or btn.Name:find("All")) then
-                    -- Click trực tiếp vào tâm của nút đó, không sợ sai màn hình
-                    local pos = btn.AbsolutePosition
-                    local size = btn.AbsoluteSize
-                    VU:Button1Down(Vector2.new(pos.X + size.X/2, pos.Y + size.Y/2))
-                    task.wait(0.1)
-                    VU:Button1Up(Vector2.new(pos.X + size.X/2, pos.Y + size.Y/2))
-                end
-            end
-        end
-    end)
-end
-
--- --- GIAO DIỆN SIÊU ỔN ĐỊNH ---
-local Gui = Instance.new("ScreenGui", pGui); Gui.Name = "ThongHubV31"
-local Main = Instance.new("Frame", Gui)
-Main.Size = UDim2.new(0, 280, 0, 350); Main.Position = UDim2.new(0.5, -140, 0.4, -175)
-Main.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-Instance.new("UICorner", Main)
-
-local List = Instance.new("UIListLayout", Main); List.Padding = UDim.new(0, 8); List.HorizontalAlignment = "Center"
-
-local function AddBtn(txt, callback)
-    local b = Instance.new("TextButton", Main)
-    b.Size = UDim2.new(0.9, 0, 0, 40); b.Text = txt; b.BackgroundColor3 = Color3.fromRGB(45, 45, 50); b.TextColor3 = Color3.new(1,1,1)
-    Instance.new("UICorner", b)
-    b.MouseButton1Click:Connect(function() callback(b) end)
-end
-
--- --- CÁC NÚT CHỨC NĂNG ---
-AddBtn("AUTO FARM: OFF", function(self)
-    _G.AutoFarm = not _G.AutoFarm
-    self.Text = _G.AutoFarm and "AUTO FARM: ON" or "AUTO FARM: OFF"
-    self.BackgroundColor3 = _G.AutoFarm and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(45, 45, 50)
-end)
-
-AddBtn("AUTO SELL: OFF", function(self)
-    _G.AutoSell = not _G.AutoSell
-    self.Text = _G.AutoSell and "AUTO SELL: ON" or "AUTO SELL: OFF"
-    self.BackgroundColor3 = _G.AutoSell and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(45, 45, 50)
-end)
-
-AddBtn("📍 SET FISHING POS", function() _G.FishingCF = Player.Character.HumanoidRootPart.CFrame end)
-AddBtn("📍 SET NPC POS", function() _G.SellCF = Player.Character.HumanoidRootPart.CFrame end)
-
--- --- CORE LOGIC (VÒNG LẶP KHÔNG LỖI) ---
-task.spawn(function()
-    Player.Idled:Connect(function() VU:CaptureController(); VU:ClickButton2(Vector2.new(0,0)) end) -- Chống treo máy bị văng
-    while true do
-        if _G.AutoFarm then
-            -- Tự động nhấp câu bằng VirtualUser (Nhẹ và chuẩn hơn VIM)
-            VU:Button1Down(Vector2.new(500, 500))
-            task.wait(0.01)
-            VU:Button1Up(Vector2.new(500, 500))
-            
-            -- Combo chiêu
-            for _, k in pairs(_G.Combo) do
-                game:GetService("KeyPressService"):SendKeyEvent(k) -- Một cách nhấn phím khác ổn định hơn
-                task.wait(0.5)
-            end
-        end
-        task.wait(0.5)
+-- 1. DỌN DẸP RÁC BỘ NHỚ (CHỐNG LAG)
+pcall(function()
+    for _, v in pairs(CoreGui:GetChildren()) do
+        if v.Name == "ThongTitanMobile" then v:Destroy() end
     end
 end)
 
--- Vòng lặp đi bán
-task.spawn(function()
-    while true do
-        task.wait(120) -- 2 phút đi bán 1 lần cho chắc
-        if _G.AutoSell and _G.SellCF and _G.FishingCF then
-            local wasFarm = _G.AutoFarm; _G.AutoFarm = false
-            -- Chạy bộ tới
-            Player.Character.Humanoid:MoveTo(_G.SellCF.Position)
-            Player.Character.Humanoid.MoveToFinished:Wait()
-            
-            -- Thực hiện tương tác bán
-            DirectSell()
-            task.wait(2)
-            
-            -- Quay lại chỗ câu
-            Player.Character.HumanoidRootPart.CFrame = _G.FishingCF
-            _G.AutoFarm = wasFarm
+-- 2. GIAO DIỆN SIÊU NHẸ (NATIVE UI - Dành riêng cho Mobile)
+-- Sử dụng CoreGui để tránh bị game phát hiện (Anti-Cheat Bypass)
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ThongTitanMobile"
+ScreenGui.ResetOnSpawn = false
+pcall(function() ScreenGui.Parent = CoreGui end)
+if not ScreenGui.Parent then ScreenGui.Parent = Player:WaitForChild("PlayerGui") end
+
+-- Nút Toggle Mini (Có thể kéo thả)
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Size = UDim2.new(0, 100, 0, 40)
+ToggleBtn.Position = UDim2.new(0, 10, 0, 10)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
+ToggleBtn.Font = Enum.Font.Code
+ToggleBtn.TextScaled = true
+ToggleBtn.Text = "TITAN: OFF"
+ToggleBtn.Active = true
+ToggleBtn.Draggable = true
+ToggleBtn.BorderSizePixel = 2
+ToggleBtn.BorderColor3 = Color3.fromRGB(0, 255, 150)
+ToggleBtn.Parent = ScreenGui
+
+-- 3. CÀI ĐẶT BẢO MẬT & MÔ PHỎNG (ANTI-BAN)
+local config = {
+    IsFarming = false,
+    FishingPos = nil,
+    SellPos = nil,
+    WaitTime = 0
+}
+
+-- Hàm tạo độ trễ ngẫu nhiên (Mô phỏng người thật, đánh lừa Anti-Cheat)
+local function RandomDelay(min, max)
+    task.wait(math.random(min * 10, max * 10) / 10)
+end
+
+-- Hàm chạy bộ an toàn (Không Teleport)
+local function WalkTo(targetCFrame)
+    local char = Player.Character
+    if not char or not targetCFrame then return end
+    local hum = char:FindFirstChild("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    
+    if hum and hrp then
+        hum:MoveTo(targetCFrame.Position)
+        local timeOut = 0
+        while (hrp.Position - targetCFrame.Position).Magnitude > 5 and timeOut < 20 do
+            task.wait(0.5)
+            timeOut = timeOut + 0.5
+            -- Chống kẹt: Nếu vận tốc = 0 thì tự nhảy
+            if hrp.Velocity.Magnitude < 0.5 then hum.Jump = true end
         end
+        hrp.CFrame = targetCFrame -- Chỉnh lại hướng nhìn
+    end
+end
+
+-- 4. LOGIC FARM (LÕI CỦA TITANFISHING)
+-- Thay vì giả lập click chuột gây lỗi trên điện thoại, ta kích hoạt Tool trực tiếp
+local function AutoFishingLogic()
+    local char = Player.Character
+    if not char then return end
+
+    -- Tìm Cần câu trong tay hoặc trong Balo
+    local rod = char:FindFirstChildOfClass("Tool") or Player.Backpack:FindFirstChildOfClass("Tool")
+    if rod and rod:IsA("Tool") then
+        if rod.Parent ~= char then
+            rod.Parent = char -- Tự động cầm cần lên
+            RandomDelay(0.5, 1.2)
+        end
+        
+        -- Kích hoạt cần câu (Tương đương việc nhấp chuột trên PC)
+        rod:Activate() 
+        
+        -- Mô phỏng thời gian chờ cá cắn (Thêm độ trễ để không bị kick vì spam)
+        RandomDelay(2, 4)
+    else
+        warn("Không tìm thấy Cần Câu!")
+    end
+end
+
+-- 5. VÒNG LẶP CHÍNH (TỐI ƯU HÓA LUỒNG)
+-- Chống AFK (Tránh văng game khi treo lâu)
+Player.Idled:Connect(function()
+    VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    task.wait(1)
+    VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+end)
+
+-- Nút điều khiển chính
+ToggleBtn.MouseButton1Click:Connect(function()
+    config.IsFarming = not config.IsFarming
+    
+    if config.IsFarming then
+        ToggleBtn.Text = "TITAN: ON"
+        ToggleBtn.BorderColor3 = Color3.fromRGB(255, 0, 0)
+        ToggleBtn.TextColor3 = Color3.fromRGB(255, 0, 0)
+        
+        -- Lưu vị trí hiện tại làm chỗ câu cá
+        if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+            config.FishingPos = Player.Character.HumanoidRootPart.CFrame
+        end
+        
+        -- Khởi động luồng Farm riêng biệt (Không gây lag Main Thread)
+        task.spawn(function()
+            while config.IsFarming and task.wait() do
+                pcall(function()
+                    AutoFishingLogic()
+                end)
+                RandomDelay(0.1, 0.5) -- Tránh tràn RAM
+            end
+        end)
+    else
+        ToggleBtn.Text = "TITAN: OFF"
+        ToggleBtn.BorderColor3 = Color3.fromRGB(0, 255, 150)
+        ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
     end
 end)
+ 
